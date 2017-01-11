@@ -65,6 +65,7 @@ function checkExpireViaRead(key,info){
 
 
 export default {
+    store:__Storage,
     clear(){
         clearExpireCache();
     },

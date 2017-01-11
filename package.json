@@ -1,8 +1,8 @@
 {
   "name": "store.ext",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "store.ext",
-  "main": "index.js",
+  "main": "dist/store.ext.min.js",
   "scripts": {
     "build": "rollup -c./rollup.config.js ",
     "watch": "rollup -c ./rollup.config.js -w",
