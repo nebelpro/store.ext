@@ -87,8 +87,6 @@ function setCache (key, val, {exp = -1, read = -1}) {
         read: read
     })
 
-    // 时间过期，需要放到跟踪队列，读取次数过期不需要，因为读取的时候，读取完，会判断是否还有剩余次数，没有则销毁
-
     pushCacheQuery(key);
 
 }
