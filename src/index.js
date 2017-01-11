@@ -13,26 +13,61 @@ function pushCacheQuery(key){
 }
 
 
+function checkLevelExpire(key){
+
+}
+
+
+function clearByLevel(level){
+    let curStore = __Storage.get("@@EXPIRE_STORE") || [];
+    curStore.forEach(key=>{
+        let keyArr = key.split('@@');
+        let keyLevel =keyArr [1];
+        let keyVal = keyArr[0]
+        if(keyLevel<level){
+            __Storage.remove(keyVal)
+        }
+    })
+}
+
+function clearByPrefix(prefix){
+    let curStore = __Storage.get("@@EXPIRE_STORE") || [];
+    curStore.forEach(key=>{
+        let keyArr = key.split('@@');
+        let keyVal = keyArr[0];
+        if(keyVal.indexOf(prefix)>-1){
+            checkValid(keyVal);
+        }
+    })
+}
+
+
+function clearByExpire(){
+    let curStore = __Storage.get("@@EXPIRE_STORE") || [];
+    curStore.forEach(key=>{
+        let keyArr = key.split('@@');
+        let keyVal = keyArr[0];
+        checkValid(keyVal);
+    })
+}
 
 
 /**
  * 清除已过期的缓存
  */
-function clearExpireCache(prefix){
-    let curStore = __Storage.get("@@EXPIRE_STORE") || [];
+function clearExpireCache(opts={}){
+    let {prefix,level} = opts;
+    if(level){
+        clearByLevel(level);
+        return;
+    }
+    if(prefix){
+        clearByPrefix(prefix);
+        return;
+    }
+    //default
+    clearByExpire();
 
-    curStore.forEach(key=>{
-
-        if(prefix){
-            if(key.indexOf(prefix)>-1){
-                checkValid(key);
-            }
-
-        }else{
-            checkValid(key);
-        }
-
-    })
 }
 
 function checkValid(key) {
@@ -77,17 +112,26 @@ function checkExpireViaRead(key,info){
     }
 }
 
-
-function setCache (key, val, {exp = -1, read = -1}) {
+/**
+ * 缓存设置
+ * @param key
+ * @param val
+ * @param exp：时间策略
+ * @param read：读写次数策略
+ * @param level：缓存级别
+ */
+function setCache (key, val, {exp = -1, read = -1,level=1}) {
 
     __Storage.set(key, {
         val: val,
         exp: exp == -1 ? -1 : exp * (60 * 1000),
         time: new Date().getTime(),
-        read: read
+        read: read,
+        level:level
+
     })
 
-    pushCacheQuery(key);
+    pushCacheQuery(key+"@@"+level);
 
 }
 
@@ -105,8 +149,9 @@ export default {
         install(config={}){
             Object.assign(cacheConfig,config)
         },
-        clear(prefix){
-            clearExpireCache(prefix);
+
+        clear(opts){
+            clearExpireCache(opts);
         },
         remove: function (key) {
             __Storage.remove(key);
