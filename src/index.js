@@ -13,18 +13,33 @@ function pushCacheQuery(key){
 }
 
 
+
+
 /**
  * 清除已过期的缓存
  */
-function clearExpireCache(){
+function clearExpireCache(prefix){
     let curStore = __Storage.get("@@EXPIRE_STORE") || [];
 
     curStore.forEach(key=>{
-        checkExpireViaTime(key)
+
+        if(prefix){
+            if(key.indexOf(prefix)>-1){
+                checkValid(key);
+            }
+
+        }else{
+            checkValid(key);
+        }
+
     })
 }
 
-
+function checkValid(key) {
+    let info = info || __Storage.get(key);
+    checkExpireViaTime(key,info);
+    checkExpireViaRead(key,info);
+}
 
 function checkExpireViaTime(key,info){
     info = info || __Storage.get(key);
@@ -63,45 +78,64 @@ function checkExpireViaRead(key,info){
 }
 
 
+function setCache (key, val, {exp = -1, read = -1}) {
+
+    __Storage.set(key, {
+        val: val,
+        exp: exp == -1 ? -1 : exp * (60 * 1000),
+        time: new Date().getTime(),
+        read: read
+    })
+
+    // 时间过期，需要放到跟踪队列，读取次数过期不需要，因为读取的时候，读取完，会判断是否还有剩余次数，没有则销毁
+
+    pushCacheQuery(key);
+
+}
+
+
+let cacheConfig = {
+    exp:1,
+    read:5
+}
+
+
 
 export default {
     store:__Storage,
-    clear(){
-        clearExpireCache();
-    },
-    remove: function (key) {
-        __Storage.remove(key);
-    },
-    set: function (key, val, {exp = -1, read = -1}) {
-        let expTime = exp == -1 ? -1 : exp * (60 * 1000);
-        __Storage.set(key, {
-            val: val,
-            exp: expTime,
-            time: new Date().getTime(),
-            read: read
-        })
+    cache:{
+        install(config={}){
+            Object.assign(cacheConfig,config)
+        },
+        clear(prefix){
+            clearExpireCache(prefix);
+        },
+        remove: function (key) {
+            __Storage.remove(key);
+        },
+        def(key,val){
+            setCache(key,val,cacheConfig);
+        },
+        set:setCache,
+        get(key) {
+            var info = __Storage.get(key);
 
-        // 时间过期，需要放到跟踪队列，读取次数过期不需要，因为读取的时候，读取完，会判断是否还有剩余次数，没有则销毁
-        if(expTime>0){
-            pushCacheQuery(key);
-        }
-    },
-    get: function (key) {
-        var info = __Storage.get(key);
+            if (!info) {
+                return null
+            }
 
-        if (!info) {
-            return null
-        }
+            // 时间策略
+            if(!checkExpireViaTime(key,info)){
+                return null;
+            }
+            //读取次数策略
+            if(!checkExpireViaRead(key,info)){
+                return null;
+            }
 
-        // 时间策略
-        if(!checkExpireViaTime(key,info)){
-            return null;
+            return info.val;
         }
-        //读取次数策略
-        if(!checkExpireViaRead(key,info)){
-            return null;
-        }
-
-        return info.val;
     }
+
+
 }
