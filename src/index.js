@@ -143,6 +143,12 @@ let cacheConfig = {
 }
 
 
+setTimeout(function(){
+    clearByExpire()
+},1)
+
+
+
 export let store = __Storage;
 export let cache = {
     install(config={}){
