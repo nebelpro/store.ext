@@ -7,10 +7,10 @@ import { minify } from 'uglify-js';
 
 export default {
   entry: 'src/index.js',
-  dest: 'dist/store.ext.min.js',
+  dest: 'dist/storext.min.js',
   format: 'umd',
   context: 'this',
-  moduleName: 'store.ext',
+  moduleName: 'storext',
   sourceMap: false,
   plugins: [
     resolve({

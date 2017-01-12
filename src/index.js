@@ -1,54 +1,48 @@
 import  __Storage from "store";
 
-
+const KEY_EXPIRE_LIST = "@@EXPIRE_STORE";
 
 /**
  * 将缓存加入标记
  * @param key
  */
-function pushCacheQuery(key){
-    let curStore = __Storage.get("@@EXPIRE_STORE") || [];
-    curStore.push(key);
-    __Storage.set('@@EXPIRE_STORE',curStore);
+function pushCacheQuery(key,level=1){
+    let curStore = __Storage.get(KEY_EXPIRE_LIST) || {};
+    curStore[key]=level;
+    __Storage.set(KEY_EXPIRE_LIST,curStore);
 }
 
 
-function checkLevelExpire(key){
-
-}
 
 
 function clearByLevel(level){
-    let curStore = __Storage.get("@@EXPIRE_STORE") || [];
-    curStore.forEach(key=>{
-        let keyArr = key.split('@@');
-        let keyLevel =keyArr [1];
-        let keyVal = keyArr[0]
+    let curStore = __Storage.get(KEY_EXPIRE_LIST) || {};
+
+    for(let key in curStore){
+        let keyLevel =curStore(key);
         if(keyLevel<level){
-            __Storage.remove(keyVal)
+            cacheRemove(key);
         }
-    })
+    }
+
 }
 
 function clearByPrefix(prefix){
-    let curStore = __Storage.get("@@EXPIRE_STORE") || [];
-    curStore.forEach(key=>{
-        let keyArr = key.split('@@');
-        let keyVal = keyArr[0];
-        if(keyVal.indexOf(prefix)>-1){
-            checkValid(keyVal);
+    let curStore = __Storage.get(KEY_EXPIRE_LIST) || {};
+    for(let key in curStore){
+        if(key.indexOf(prefix)>-1){
+            checkValid(key);
         }
-    })
+    }
 }
 
 
 function clearByExpire(){
-    let curStore = __Storage.get("@@EXPIRE_STORE") || [];
-    curStore.forEach(key=>{
-        let keyArr = key.split('@@');
-        let keyVal = keyArr[0];
-        checkValid(keyVal);
-    })
+    let curStore = __Storage.get(KEY_EXPIRE_LIST) || {};
+    for(let key in curStore){
+
+        checkValid(key);
+    }
 }
 
 
@@ -76,10 +70,18 @@ function checkValid(key) {
     checkExpireViaRead(key,info);
 }
 
+function cacheRemove(key){
+    let curStore = __Storage.get(KEY_EXPIRE_LIST) || {};
+    delete curStore[key];
+    __Storage.set(KEY_EXPIRE_LIST,curStore)
+    __Storage.remove(key);
+}
+
+
 function checkExpireViaTime(key,info){
     info = info || __Storage.get(key);
     if (info.exp != -1 && (new Date().getTime() - info.time > info.exp)) {
-        __Storage.remove(key);
+        cacheRemove(key);
         return false;
     }else{
         return true;
@@ -94,12 +96,12 @@ function checkExpireViaRead(key,info){
         let readed = (info.readed || 0);
 
         if(readed>=info.read){
-            __Storage.remove(key);
+            cacheRemove(key);
             return false;
         }else{
             let curReadTime = readed+1;
             if (curReadTime == info.read) {
-                __Storage.remove(key);
+                cacheRemove(key);
             }else{
                 info.readed = curReadTime;
                 __Storage.set(key, info);
@@ -128,10 +130,9 @@ function setCache (key, val, {exp = -1, read = -1,level=1}) {
         time: new Date().getTime(),
         read: read,
         level:level
-
     })
 
-    pushCacheQuery(key+"@@"+level);
+    pushCacheQuery(key,level);
 
 }
 
@@ -142,43 +143,38 @@ let cacheConfig = {
 }
 
 
+export let store = __Storage;
+export let cache = {
+    install(config={}){
+        Object.assign(cacheConfig,config)
+    },
 
-export default {
-    store:__Storage,
-    cache:{
-        install(config={}){
-            Object.assign(cacheConfig,config)
-        },
-
-        clear(opts){
-            clearExpireCache(opts);
-        },
-        remove: function (key) {
-            __Storage.remove(key);
-        },
-        def(key,val){
-            setCache(key,val,cacheConfig);
-        },
-        set:setCache,
+    clear(opts){
+        clearExpireCache(opts);
+    },
+    remove: function (key) {
+        cacheRemove(key);
+    },
+    def(key,val){
+        setCache(key,val,cacheConfig);
+    },
+    set:setCache,
         get(key) {
-            var info = __Storage.get(key);
+        var info = __Storage.get(key);
 
-            if (!info) {
-                return null
-            }
-
-            // 时间策略
-            if(!checkExpireViaTime(key,info)){
-                return null;
-            }
-            //读取次数策略
-            if(!checkExpireViaRead(key,info)){
-                return null;
-            }
-
-            return info.val;
+        if (!info) {
+            return null
         }
+
+        // 时间策略
+        if(!checkExpireViaTime(key,info)){
+            return null;
+        }
+        //读取次数策略
+        if(!checkExpireViaRead(key,info)){
+            return null;
+        }
+
+        return info.val;
     }
-
-
 }
