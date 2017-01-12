@@ -1,6 +1,6 @@
 {
   "name": "store.ext",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "store.ext",
   "main": "dist/store.ext.min.js",
   "scripts": {
